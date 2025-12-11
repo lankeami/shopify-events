@@ -37,6 +37,10 @@ async function fetchEventsForCurrentPage() {
     });
 
     if (!response.ok) {
+      // If 404, try alternative method using admin_graphql_api_id
+      // if (response.status === 404) {
+      //   return await fetchEventsViaAdminAPI();
+      // }
       const error = new Error(`HTTP error! status: ${response.status}`);
       error.statusCode = response.status;
       throw error;
@@ -46,6 +50,81 @@ async function fetchEventsForCurrentPage() {
     return data;
   } catch (error) {
     console.error('Error fetching events:', error);
+    throw error;
+  }
+}
+
+// Alternative method: Fetch events using admin REST API
+async function fetchEventsViaAdminAPI() {
+  const currentUrl = window.location.href;
+  const url = new URL(currentUrl);
+
+  // Append .json to get the resource data
+  const resourceUrl = url.pathname.replace(/\/$/, '') + '.json';
+  const fullResourceUrl = `${url.origin}${resourceUrl}`;
+
+  try {
+    // Fetch the resource to get admin_graphql_api_id
+    const resourceResponse = await fetch(fullResourceUrl, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!resourceResponse.ok) {
+      throw new Error(`Failed to fetch resource: ${resourceResponse.status}`);
+    }
+
+    const resourceData = await resourceResponse.json();
+
+    // Extract admin_graphql_api_id from the first object key's data
+    let adminGraphqlApiId = null;
+    for (const key in resourceData) {
+      if (resourceData[key] && resourceData[key].admin_graphql_api_id) {
+        adminGraphqlApiId = resourceData[key].admin_graphql_api_id;
+        break;
+      }
+    }
+
+    if (!adminGraphqlApiId) {
+      throw new Error('admin_graphql_api_id not found in resource data');
+    }
+
+    // Parse GID: "gid://shopify/<subject-type>/<subject-id>"
+    const gidMatch = adminGraphqlApiId.match(/gid:\/\/shopify\/([^\/]+)\/(\d+)/);
+    if (!gidMatch) {
+      throw new Error('Invalid admin_graphql_api_id format');
+    }
+
+    const subjectType = gidMatch[1];
+    const subjectId = gidMatch[2];
+
+    // Extract store name from URL path (e.g., /store/my-store/...)
+    const storeMatch = url.pathname.match(/\/store\/([^\/]+)/);
+    if (!storeMatch) {
+      throw new Error('Could not extract store name from URL');
+    }
+    const storeName = storeMatch[1];
+
+    // Construct admin REST API events URL
+    const eventsApiUrl = `${url.origin}/store/${storeName}/api/2025-01/events.json?subject_id=${subjectId}&subject_type=${subjectType}`;
+
+    const eventsResponse = await fetch(eventsApiUrl, {
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
+
+    if (!eventsResponse.ok) {
+      throw new Error(`Failed to fetch events from admin API: ${eventsResponse.status}`);
+    }
+
+    const eventsData = await eventsResponse.json();
+    return eventsData;
+  } catch (error) {
+    console.error('Error fetching events via admin API:', error);
     throw error;
   }
 }
