@@ -1,0 +1,13 @@
+# Icon files (generated from create-icons.html)
+*.png
+
+# macOS
+.DS_Store
+
+# Editor directories
+.vscode/
+.idea/
+
+# Temporary files
+*.log
+*.tmp
