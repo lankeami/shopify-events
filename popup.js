@@ -19,7 +19,10 @@ async function init() {
     }
 
     currentUrl = tab.url;
-    urlInfoDiv.innerHTML = `<strong>Current Page:</strong><br>${currentUrl}`;
+    // Extract a cleaner display URL (just the path after store name)
+    const urlMatch = currentUrl.match(/\/store\/[^\/]+(.*)$/);
+    const displayPath = urlMatch ? urlMatch[1] : currentUrl;
+    urlInfoDiv.innerHTML = `📍 ${displayPath}`;
 
     // Auto-fetch events on popup open
     fetchEvents();

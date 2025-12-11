@@ -5,147 +5,303 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shopify Events Viewer</title>
   <style>
-    body {
+    html, body {
       width: 500px;
-      min-height: 300px;
-      max-height: 600px;
+      height: 600px;
       margin: 0;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      font-size: 14px;
-      background-color: #f9fafb;
+      padding: 0;
+      overflow: hidden;
     }
 
-    h1 {
-      font-size: 18px;
-      margin: 0 0 16px 0;
-      color: #1a1a1a;
-      font-weight: 600;
+    body {
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-size: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      font-size: 20px;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      opacity: 0.9;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f8f9fa;
+      overflow: hidden;
+      padding: 16px;
+      gap: 12px;
     }
 
     .url-info {
       background: white;
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      border: 1px solid #e5e7eb;
+      padding: 12px 14px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
       word-wrap: break-word;
-      font-size: 12px;
-      color: #6b7280;
+      font-size: 11px;
+      color: #64748b;
+      border-left: 3px solid #667eea;
     }
 
     .url-info strong {
-      color: #374151;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
     }
 
     .loading {
       text-align: center;
-      padding: 32px;
-      color: #6b7280;
+      padding: 48px 32px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .loading::before {
+      content: "⏳";
+      display: block;
+      font-size: 32px;
+      margin-bottom: 12px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
     .error {
-      background: #fee;
-      color: #c00;
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      border: 1px solid #fcc;
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      color: #dc2626;
+      padding: 14px;
+      border-radius: 10px;
+      border-left: 4px solid #ef4444;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .error::before {
+      content: "⚠️";
+      font-size: 20px;
+      flex-shrink: 0;
     }
 
     .events-container {
-      max-height: 450px;
+      flex: 1;
       overflow-y: auto;
+      min-height: 0;
+      padding-right: 4px;
+    }
+
+    .events-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .events-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .events-container::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .events-container::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
 
     .event-item {
       background: white;
-      padding: 12px;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
+      padding: 14px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
     }
 
     .event-item:hover {
-      border-color: #d1d5db;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+      transform: translateY(-1px);
     }
 
     .event-header {
       display: flex;
       justify-content: space-between;
       align-items: start;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      gap: 8px;
     }
 
     .event-type {
       font-weight: 600;
-      color: #1a1a1a;
+      color: #1e293b;
       font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .event-type::before {
+      content: "📌";
+      font-size: 14px;
     }
 
     .event-time {
-      font-size: 11px;
-      color: #6b7280;
+      font-size: 10px;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
     }
 
     .event-details {
       font-size: 12px;
-      color: #4b5563;
-      line-height: 1.5;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .event-details details {
+      margin-top: 10px;
+    }
+
+    .event-details summary {
+      cursor: pointer;
+      color: #667eea;
+      font-weight: 500;
+      font-size: 11px;
+      padding: 6px 10px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .event-details summary:hover {
+      background: #e0e7ff;
+      color: #5b21b6;
+    }
+
+    .event-details summary::before {
+      content: "{ }";
+      font-family: monospace;
+      font-weight: bold;
     }
 
     .event-details pre {
-      background: #f3f4f6;
-      padding: 8px;
-      border-radius: 4px;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 8px;
       overflow-x: auto;
       margin: 8px 0 0 0;
-      font-size: 11px;
+      font-size: 10px;
+      line-height: 1.5;
+      border: 1px solid #334155;
     }
 
     .refresh-btn {
-      background: #5c6ac4;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 12px 20px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 16px;
+      font-size: 14px;
+      font-weight: 600;
       width: 100%;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .refresh-btn::before {
+      content: "🔄";
+      font-size: 16px;
     }
 
     .refresh-btn:hover {
-      background: #4c59b3;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .refresh-btn:active {
+      transform: translateY(0);
     }
 
     .refresh-btn:disabled {
-      background: #d1d5db;
+      background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
       cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
     }
 
     .no-events {
       text-align: center;
-      padding: 32px;
-      color: #6b7280;
+      padding: 48px 32px;
+      color: #64748b;
       background: white;
-      border-radius: 6px;
-      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      border: 2px dashed #cbd5e1;
+    }
+
+    .no-events::before {
+      content: "📭";
+      display: block;
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.7;
     }
   </style>
 </head>
 <body>
-  <h1>Shopify Admin Events</h1>
+  <div class="header">
+    <h1>⚡ Shopify Events</h1>
+    <div id="urlInfo" class="header-subtitle"></div>
+  </div>
 
-  <div id="urlInfo" class="url-info"></div>
+  <div class="content-area">
+    <button id="refreshBtn" class="refresh-btn">Fetch Events</button>
 
-  <button id="refreshBtn" class="refresh-btn">Fetch Events</button>
-
-  <div id="loading" class="loading" style="display: none;">Loading events...</div>
-  <div id="error" class="error" style="display: none;"></div>
-  <div id="events" class="events-container"></div>
+    <div id="loading" class="loading" style="display: none;">Loading events...</div>
+    <div id="error" class="error" style="display: none;"></div>
+    <div id="events" class="events-container"></div>
+  </div>
 
   <script src="popup.js"></script>
 </body>
