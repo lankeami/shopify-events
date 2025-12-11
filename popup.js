@@ -41,8 +41,33 @@ async function fetchEvents() {
 
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-    // Send message to content script to fetch events
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'fetchEvents' });
+    let response;
+    try {
+      // Try to send message to content script
+      response = await chrome.tabs.sendMessage(tab.id, { action: 'fetchEvents' });
+    } catch (error) {
+      // If content script is not loaded, inject it first
+      if (error.message.includes('Could not establish connection') ||
+          error.message.includes('Receiving end does not exist')) {
+        try {
+          // Inject content script
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+
+          // Wait a bit for the script to initialize
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Try sending message again
+          response = await chrome.tabs.sendMessage(tab.id, { action: 'fetchEvents' });
+        } catch (injectError) {
+          throw new Error('Failed to load content script: ' + injectError.message);
+        }
+      } else {
+        throw error;
+      }
+    }
 
     loadingDiv.style.display = 'none';
     refreshBtn.disabled = false;
@@ -84,6 +109,13 @@ function displayEvents(data) {
     eventsDiv.innerHTML = '<div class="no-events">No events found for this page</div>';
     return;
   }
+
+  // Sort events by timestamp (newest first)
+  events.sort((a, b) => {
+    const timeA = a.created_at || a.timestamp || a.occurred_at || 0;
+    const timeB = b.created_at || b.timestamp || b.occurred_at || 0;
+    return new Date(timeB) - new Date(timeA);
+  });
 
   events.forEach((event) => {
     const eventItem = document.createElement('div');
