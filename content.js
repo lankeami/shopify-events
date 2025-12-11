@@ -13,13 +13,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(events => sendResponse({ success: true, events }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep the message channel open for async response
+  } else if (request.action === 'checkEventsAvailability') {
+    checkEventsAvailability()
+      .then(available => sendResponse({ available }))
+      .catch(() => sendResponse({ available: false }));
+    return true; // Keep the message channel open for async response
   }
 });
 
 // Function to fetch events for the current page
 async function fetchEventsForCurrentPage() {
   const currentUrl = window.location.href;
-  const eventsUrl = currentUrl + '/events.json';
+  const url = new URL(currentUrl);
+  url.pathname = url.pathname.replace(/\/$/, '') + '/events.json';
+  const eventsUrl = url.toString();
 
   try {
     const response = await fetch(eventsUrl, {
@@ -30,7 +37,9 @@ async function fetchEventsForCurrentPage() {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const error = new Error(`HTTP error! status: ${response.status}`);
+      error.statusCode = response.status;
+      throw error;
     }
 
     const data = await response.json();
@@ -41,6 +50,38 @@ async function fetchEventsForCurrentPage() {
   }
 }
 
+// Check if events are available for the current page (lightweight check)
+async function checkEventsAvailability() {
+  const currentUrl = window.location.href;
+  const url = new URL(currentUrl);
+  url.pathname = url.pathname.replace(/\/$/, '') + '/events.json';
+  const eventsUrl = url.toString();
+
+  try {
+    const response = await fetch(eventsUrl, {
+      method: 'HEAD', // Use HEAD to avoid downloading the full response
+      credentials: 'include',
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Update badge when events availability changes
+async function updateBadge() {
+  const available = await checkEventsAvailability();
+  chrome.runtime.sendMessage({
+    action: 'updateBadge',
+    available
+  }).catch(() => {
+    // Ignore errors if background script isn't ready
+  });
+}
+
+// Check events availability on page load
+updateBadge();
+
 // Update the stored URL when the page changes (for single-page apps)
 let lastUrl = location.href;
 new MutationObserver(() => {
@@ -48,5 +89,7 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     currentPageUrl = url;
+    // Check events availability when URL changes
+    updateBadge();
   }
 }).observe(document, { subtree: true, childList: true });

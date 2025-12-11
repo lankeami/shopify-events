@@ -47,7 +47,12 @@ async function fetchEvents() {
     if (response.success) {
       displayEvents(response.events);
     } else {
-      showError('Error fetching events: ' + response.error);
+      // Check if it's a 404 error (events not supported for this page type)
+      if (response.error && response.error.includes('status: 404')) {
+        showInfo('Events not supported for this page type');
+      } else {
+        showError('Error fetching events: ' + response.error);
+      }
     }
   } catch (error) {
     loadingDiv.style.display = 'none';
@@ -77,12 +82,14 @@ function displayEvents(data) {
     return;
   }
 
-  events.forEach((event, index) => {
+  events.forEach((event) => {
     const eventItem = document.createElement('div');
     eventItem.className = 'event-item';
 
-    // Extract common fields
-    const eventType = event.type || event.event_type || event.verb || 'Unknown Event';
+    // Extract fields for header
+    const subjectType = event.subject_type || 'Unknown';
+    const verb = event.verb || 'Unknown';
+    const headerText = `${subjectType}: ${verb}`;
     const timestamp = event.created_at || event.timestamp || event.occurred_at;
     const description = event.description || event.message || '';
 
@@ -94,12 +101,15 @@ function displayEvents(data) {
 
     eventItem.innerHTML = `
       <div class="event-header">
-        <div class="event-type">${escapeHtml(eventType)}</div>
+        <div class="event-type">${escapeHtml(headerText)}</div>
         ${timeString ? `<div class="event-time">${escapeHtml(timeString)}</div>` : ''}
       </div>
       <div class="event-details">
         ${description ? `<div>${escapeHtml(description)}</div>` : ''}
-        <pre>${escapeHtml(JSON.stringify(event, null, 2))}</pre>
+        <details>
+          <summary>View JSON payload</summary>
+          <pre>${escapeHtml(JSON.stringify(event, null, 2))}</pre>
+        </details>
       </div>
     `;
 
@@ -112,6 +122,12 @@ function showError(message) {
   errorDiv.textContent = message;
   errorDiv.style.display = 'block';
   eventsDiv.innerHTML = '';
+}
+
+// Show info message (less alarming than error)
+function showInfo(message) {
+  eventsDiv.innerHTML = `<div class="no-events">${escapeHtml(message)}</div>`;
+  errorDiv.style.display = 'none';
 }
 
 // Escape HTML to prevent XSS
