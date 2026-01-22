@@ -2,6 +2,10 @@
 
 A Chrome extension that allows you to view recent events for any Shopify admin page by fetching data from the `/events.json` endpoint.
 
+## Publishing
+
+Ready to publish to the Chrome Web Store? See the **[Publishing Guide](./PUBLISHING.md)** for complete instructions.
+
 ## Features
 
 - Automatically detects when you're on a Shopify admin page (`admin.shopify.com`)
