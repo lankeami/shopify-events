@@ -147,15 +147,107 @@ async function checkEventsAvailability() {
   }
 }
 
+// Panel width constant
+const PANEL_WIDTH = 380;
+
+// Inject the events panel iframe into the main section
+function injectPanel() {
+  if (document.getElementById('shopify-events-panel')) return;
+
+  const main = document.querySelector('main');
+  if (!main) {
+    console.log('Shopify Events: No <main> element found, skipping panel injection');
+    return;
+  }
+
+  // Create a container that will hold the panel alongside the main content
+  const container = document.createElement('div');
+  container.id = 'shopify-events-panel-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 56px;
+    right: 0;
+    width: ${PANEL_WIDTH}px;
+    height: calc(100vh - 56px);
+    z-index: 99;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-left: 1px solid #e2e8f0;
+    box-shadow: -2px 0 12px rgba(0, 0, 0, 0.08);
+  `;
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'shopify-events-panel';
+  iframe.src = chrome.runtime.getURL('panel.html');
+  iframe.style.cssText = `
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: white;
+  `;
+
+  container.appendChild(iframe);
+  document.body.appendChild(container);
+
+  // Shift the Polaris-Page content to the left
+  const polarisPage = document.querySelector('.Polaris-Page');
+  if (polarisPage) {
+    polarisPage.style.marginRight = `${PANEL_WIDTH}px`;
+    polarisPage.style.transition = 'margin-right 0.2s ease';
+  }
+}
+
+// Remove the events panel iframe
+function removePanel() {
+  document.getElementById('shopify-events-panel-container')?.remove();
+
+  // Restore the Polaris-Page content position
+  const polarisPage = document.querySelector('.Polaris-Page');
+  if (polarisPage) {
+    polarisPage.style.marginRight = '';
+  }
+}
+
+// Handle postMessage from the panel iframe
+window.addEventListener('message', async (event) => {
+  const panel = document.getElementById('shopify-events-panel');
+  if (!panel || event.source !== panel.contentWindow) return;
+
+  if (event.data.action === 'fetchEvents') {
+    try {
+      const events = await fetchEventsForCurrentPage();
+      event.source.postMessage({ action: 'eventsData', success: true, events }, '*');
+    } catch (error) {
+      event.source.postMessage({ action: 'eventsData', success: false, error: error.message }, '*');
+    }
+  } else if (event.data.action === 'closePanel') {
+    panelManuallyClosed = true;
+    removePanel();
+  }
+});
+
+// Track if panel was manually closed to avoid re-showing on same page
+let panelManuallyClosed = false;
+
 // Update badge when events availability changes
 async function updateBadge() {
   const available = await checkEventsAvailability();
+
+  // Update badge
   chrome.runtime.sendMessage({
     action: 'updateBadge',
     available
   }).catch(() => {
     // Ignore errors if background script isn't ready
   });
+
+  // Auto-show/hide panel (respect manual close)
+  if (available && !panelManuallyClosed) {
+    injectPanel();
+  } else if (!available) {
+    removePanel();
+  }
 }
 
 // Check events availability on page load
@@ -168,6 +260,8 @@ new MutationObserver(() => {
   if (url !== lastUrl) {
     lastUrl = url;
     currentPageUrl = url;
+    // Reset manual close flag on navigation
+    panelManuallyClosed = false;
     // Check events availability when URL changes
     updateBadge();
   }
