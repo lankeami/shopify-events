@@ -1,5 +1,5 @@
-# Icon files (generated from create-icons.html)
-*.png
+# Screenshots (Playwright/debug artifacts)
+Screenshots/
 
 # macOS
 .DS_Store
