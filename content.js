@@ -195,23 +195,27 @@ function injectPanel(attempt = 0) {
   container.appendChild(iframe);
   document.body.appendChild(container);
 
-  // Shift the Polaris-Page content to the left
-  const polarisPage = document.querySelector('.Polaris-Page');
-  if (polarisPage) {
-    polarisPage.style.marginRight = `${PANEL_WIDTH}px`;
-    polarisPage.style.transition = 'margin-right 0.2s ease';
+  // Inject a stylesheet to shrink #AppFrameBevel (Shopify's fixed-position
+  // content frame) — its width: 100% !important in Polaris CSS requires our
+  // own !important to override.
+  let style = document.getElementById('shopify-events-panel-style');
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'shopify-events-panel-style';
+    document.head.appendChild(style);
   }
+  style.textContent = `
+    #AppFrameBevel {
+      width: calc(100% - ${PANEL_WIDTH}px) !important;
+      transition: width 0.2s ease;
+    }
+  `;
 }
 
 // Remove the events panel iframe
 function removePanel() {
   document.getElementById('shopify-events-panel-container')?.remove();
-
-  // Restore the Polaris-Page content position
-  const polarisPage = document.querySelector('.Polaris-Page');
-  if (polarisPage) {
-    polarisPage.style.marginRight = '';
-  }
+  document.getElementById('shopify-events-panel-style')?.remove();
 }
 
 // Handle postMessage from the panel iframe
