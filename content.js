@@ -130,7 +130,7 @@ async function fetchEventsViaAdminAPI() {
 }
 
 // Check if events are available for the current page (lightweight check)
-async function checkEventsAvailability() {
+async function checkEventsAvailability(signal) {
   const currentUrl = window.location.href;
   const url = new URL(currentUrl);
   url.pathname = url.pathname.replace(/\/$/, '') + '/events.json';
@@ -140,9 +140,11 @@ async function checkEventsAvailability() {
     const response = await fetch(eventsUrl, {
       method: 'HEAD', // Use HEAD to avoid downloading the full response
       credentials: 'include',
+      signal,
     });
     return response.ok;
   } catch (error) {
+    if (error.name === 'AbortError') throw error;
     return false;
   }
 }
@@ -150,13 +152,16 @@ async function checkEventsAvailability() {
 // Panel width constant
 const PANEL_WIDTH = 380;
 
-// Inject the events panel iframe into the main section
-function injectPanel() {
+// Inject the events panel iframe into the main section, retrying if <main> isn't mounted yet
+function injectPanel(attempt = 0) {
   if (document.getElementById('shopify-events-panel')) return;
 
   const main = document.querySelector('main');
   if (!main) {
-    console.log('Shopify Events: No <main> element found, skipping panel injection');
+    const delays = [200, 500, 1000];
+    if (attempt < delays.length) {
+      setTimeout(() => injectPanel(attempt + 1), delays[attempt]);
+    }
     return;
   }
 
@@ -230,9 +235,27 @@ window.addEventListener('message', async (event) => {
 // Track if panel was manually closed to avoid re-showing on same page
 let panelManuallyClosed = false;
 
+// AbortController for the current in-flight updateBadge check
+let badgeCheckController = null;
+
 // Update badge when events availability changes
 async function updateBadge() {
-  const available = await checkEventsAvailability();
+  // Cancel any in-flight check so they don't race
+  if (badgeCheckController) {
+    badgeCheckController.abort();
+  }
+  badgeCheckController = new AbortController();
+  const { signal } = badgeCheckController;
+
+  let available;
+  try {
+    available = await checkEventsAvailability(signal);
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    available = false;
+  }
+
+  if (signal.aborted) return;
 
   // Update badge
   chrome.runtime.sendMessage({
@@ -253,8 +276,18 @@ async function updateBadge() {
 // Check events availability on page load
 updateBadge();
 
+// Debounce helper
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
 // Update the stored URL when the page changes (for single-page apps)
 let lastUrl = location.href;
+const debouncedUpdateBadge = debounce(updateBadge, 300);
 new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
@@ -262,7 +295,7 @@ new MutationObserver(() => {
     currentPageUrl = url;
     // Reset manual close flag on navigation
     panelManuallyClosed = false;
-    // Check events availability when URL changes
-    updateBadge();
+    // Debounce so rapid SPA mutations consolidate into one check
+    debouncedUpdateBadge();
   }
 }).observe(document, { subtree: true, childList: true });
