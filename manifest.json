@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Shopify Admin Events Viewer",
-  "version": "2026.0604.1909",
+  "version": "2026.0604.1932",
   "description": "View recent events for Shopify admin pages",
   "permissions": [
     "activeTab",
