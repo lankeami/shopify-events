@@ -70,6 +70,7 @@ function displayEvents(data) {
     const headerText = `${subjectType}: ${verb}`;
     const timestamp = event.created_at || event.timestamp || event.occurred_at;
     const description = event.description || event.message || '';
+    const body = event.body || '';
     const author = event.author || '';
 
     let timeString = '';
@@ -86,6 +87,7 @@ function displayEvents(data) {
       ${author ? `<div class="event-author">by ${escapeHtml(author)}</div>` : ''}
       <div class="event-details">
         ${description ? `<div>${escapeHtml(description)}</div>` : ''}
+        ${body ? `<div class="event-body">${escapeHtml(body)}</div>` : ''}
         <details>
           <summary>View JSON payload</summary>
           <pre>${escapeHtml(JSON.stringify(event, null, 2))}</pre>
